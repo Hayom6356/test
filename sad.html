@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>hujan kata-kata sad | edisi premium</title>
+    <!-- tailwind css cdn -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- lucide-react untuk ikon mute/unmute -->
+    <script src="https://cdn.jsdelivr.net/npm/lucide-static@0.292.0/dist/umd/lucide.min.js"></script>
+    <!-- html2canvas untuk mengambil screenshot dari elemen HTML -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        /* mengatur font inter sebagai default */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow: hidden; /* mencegah scroll saat splash screen aktif atau animasi */
+            /* latar belakang gradien mewah */
+            background: radial-gradient(circle at center, #2a0a3a 0%, #0d011a 100%);
+            color: #f7fafc; /* warna teks default */
+        }
+
+        /* styling untuk splash screen (video intro) */
+        #splashScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.8); /* overlay gelap */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 999; /* di atas semua elemen */
+            transition: opacity 1s ease-out, visibility 1s ease-out;
+        }
+
+        #splashVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* mengisi seluruh area */
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        #skipButton {
+            padding: 0.75rem 2rem;
+            background: linear-gradient(45deg, #8b5cf6, #d946ef); /* gradien ungu-pink */
+            color: white;
+            border: none;
+            border-radius: 9999px; /* rounded penuh */
+            font-size: 1.125rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.5), 0 0 30px rgba(217, 70, 239, 0.3); /* efek glow */
+            transition: all 0.3s ease-in-out;
+            margin-top: 1rem;
+            z-index: 1; /* di atas video */
+        }
+
+        #skipButton:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 0 25px rgba(139, 92, 246, 0.7), 0 0 40px rgba(217, 70, 239, 0.5);
+        }
+
+        /* styling untuk canvas hujan turun */
+        #rainCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1; /* memastikan canvas di belakang konten */
+        }
+
+        /* styling untuk kontainer kutipan */
+        .quote-container {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        /* styling untuk kutipan itu sendiri */
+        .quote-text {
+            color: #f0f4f8; /* warna teks putih keabuan */
+            font-size: 2.5rem;
+            font-weight: 700; /* lebih tebal */
+            text-align: center;
+            max-width: 800px;
+            padding: 2.5rem;
+            background-color: rgba(10, 0, 20, 0.7); /* latar belakang transparan ungu tua */
+            border-radius: 1.5rem; /* rounded lebih */
+            border: 1px solid rgba(150, 50, 250, 0.3); /* border subtle */
+            box-shadow: 0 0 40px rgba(139, 92, 246, 0.4), 0 0 20px rgba(217, 70, 239, 0.2); /* efek glow ungu/pink */
+            transition: opacity 1s ease-in-out, transform 0.5s ease-out; /* transisi untuk perubahan kutipan & animasi */
+            text-transform: lowercase; /* memastikan semua teks kutipan menjadi huruf kecil */
+            animation: fadeInScale 1s ease-out forwards, quoteGlow 2s infinite alternate; /* animasi saat muncul dan efek glow */
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.4); /* bayangan teks untuk kedalaman */
+            margin-bottom: 2rem; /* jarak antara kutipan dan tombol */
+        }
+
+        /* keyframe untuk animasi fade in dan scale */
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* keyframe untuk efek glow pada kotak kutipan */
+        @keyframes quoteGlow {
+            from {
+                box-shadow: 0 0 40px rgba(139, 92, 246, 0.4), 0 0 20px rgba(217, 70, 239, 0.2);
+            }
+            to {
+                box-shadow: 0 0 50px rgba(139, 92, 246, 0.6), 0 0 30px rgba(217, 70, 239, 0.4);
+            }
+        }
+
+        /* responsif untuk ukuran layar yang lebih kecil */
+        @media (max-width: 768px) {
+            .quote-text {
+                font-size: 1.5rem;
+                padding: 1.5rem;
+                border-radius: 1rem;
+            }
+            #skipButton {
+                font-size: 1rem;
+                padding: 0.6rem 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .quote-text {
+                font-size: 1.25rem;
+                padding: 1rem;
+                border-radius: 0.75rem;
+            }
+        }
+
+        /* music control button and next quote button styling */
+        .control-button {
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 1.5rem;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            z-index: 10;
+        }
+
+        .control-button:hover {
+            background-color: rgba(0, 0, 0, 0.8);
+            transform: scale(1.05);
+        }
+
+        #musicToggleButton {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+        }
+
+        .action-button { /* Gaya baru untuk tombol aksi seperti "kutipan berikutnya" dan "bagikan" */
+            background: linear-gradient(45deg, #8b5cf6, #d946ef); /* gradien ungu-pink */
+            color: white;
+            border: none;
+            border-radius: 9999px; /* rounded penuh */
+            padding: 0.75rem 2rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.5), 0 0 30px rgba(217, 70, 239, 0.3); /* efek glow */
+            transition: all 0.3s ease-in-out;
+            z-index: 1;
+            margin: 0.5rem; /* jarak antar tombol */
+        }
+
+        .action-button:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 0 25px rgba(139, 92, 246, 0.7), 0 0 40px rgba(217, 70, 239, 0.5);
+        }
+
+        /* Kontainer tombol aksi */
+        .action-buttons-container {
+            display: flex;
+            gap: 1rem; /* Jarak antar tombol */
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap; /* Agar responsif di layar kecil */
+        }
+
+        .control-button svg {
+            stroke: white;
+            stroke-width: 2;
+            width: 24px;
+            height: 24px;
+        }
+
+        /* Styling untuk pesan notifikasi (bukan alert) */
+        #notificationMessage {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            z-index: 1000; /* Di atas semua elemen lain */
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        #notificationMessage.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 flex items-center justify-center min-h-screen">
+
+    <!-- splash screen (video intro) -->
+    <div id="splashScreen">
+        <!-- video ini sekarang di-mute secara default agar bisa autoplay secara visual -->
+        <video id="splashVideo" autoplay playsinline loop muted>
+            <!-- URL VIDEO CLOUDINARY ANDA -->
+            <source src="https://res.cloudinary.com/dnxjhd4ii/video/upload/v1750643687/pfrhkgsnmjm5apehkw2i.mp4" type="video/mp4">
+            your browser does not support the video tag.
+        </video>
+        <button id="skipButton">lewati intro</button>
+    </div>
+
+    <canvas id="rainCanvas"></canvas>
+
+    <div class="quote-container hidden" id="mainContent">
+        <h1 id="currentQuote" class="quote-text">
+            berawal dari salting, berakhir jadi asing.
+        </h1>
+        <div class="action-buttons-container">
+            <!-- tombol teks berikutnya -->
+            <button id="nextQuoteButton" class="action-button">
+                kutipan berikutnya
+            </button>
+            <!-- tombol bagikan kutipan -->
+            <button id="shareQuoteButton" class="action-button">
+                bagikan kutipan
+            </button>
+        </div>
+    </div>
+
+    <!-- background music - diputar setelah intro selesai/dilewati -->
+    <audio id="backgroundMusic" loop>
+        <!-- URL MUSIK MP3 CLOUDINARY ANDA -->
+        <source src="https://res.cloudinary.com/dnxjhd4ii/video/upload/v1750741081/galau_nfr5ni.mp3" type="audio/mpeg">
+        your browser does not support the audio element.
+    </audio>
+
+    <!-- music toggle button -->
+    <button id="musicToggleButton" class="control-button">
+        <!-- ikon volume-x berarti suara mati di awal -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-volume-x"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>
+    </button>
+
+    <!-- pesan notifikasi -->
+    <div id="notificationMessage"></div>
+
+    <script>
+        // Deklarasi variabel global
+        var currentQuoteIndex = 0;
+        var quoteIntervalId;
+        const AUTO_CHANGE_DURATION = 8000; // Durasi pergantian otomatis 8 detik (lebih lambat)
+
+        const canvas = document.getElementById('rainCanvas');
+        const ctx = canvas.getContext('2d');
+        const currentQuoteElement = document.getElementById('currentQuote');
+        const splashScreen = document.getElementById('splashScreen');
+        const splashVideo = document.getElementById('splashVideo');
+        const skipButton = document.getElementById('skipButton');
+        const mainContent = document.getElementById('mainContent');
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const musicToggleButton = document.getElementById('musicToggleButton');
+        const nextQuoteButton = document.getElementById('nextQuoteButton');
+        const shareQuoteButton = document.getElementById('shareQuoteButton');
+        const notificationMessage = document.getElementById('notificationMessage');
+
+        let isMusicPlaying = false;
+        let isVideoEnded = false;
+
+        // mengatur ukuran canvas agar sesuai dengan viewport
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // daftar kata-kata sad gaul santai (semua huruf kecil)
+        const sadWords = [
+            "berawal dari salting, berakhir jadi asing.",
+            "datang membawa cinta, pulang membawa duka.",
+            "cinta itu indah, tapi kadang takdir berkata lain.",
+            "kita hanya sebatas 'pernah'.",
+            "mencintai dalam diam, merelakan dalam senyuman.",
+            "janji manis di awal, pahit di akhir.",
+            "semesta bercanda.",
+            "hati ini retak, bukan pecah.",
+            "sudah berusaha, tapi takdir menolak.",
+            "tersenyum bukan berarti bahagia.",
+            "cukup tahu diri.",
+            "lebih baik mundur teratur.",
+            "berharap itu menyakitkan.",
+            "hanya bisa melihat, tak bisa memiliki.",
+            "terjebak nostalgia.",
+            "selamat tinggal kenangan.",
+            "bahagia itu fana.",
+            "bukan salahmu, bukan salahku, ini takdir.",
+            // 5 kata-kata galau baru (lebih panjang dan bermakna)
+            "setiap langkah menjauh darimu, bukan hanya jarak fisik yang tercipta, tapi juga ruang kosong di hati yang semakin meluas dalam kehampaan.",
+            "bukan perpisahan yang begitu perih, melainkan kilasan kenangan manis yang terus berputar, mengingatkan pada sesuatu yang tak akan pernah bisa kembali terulang.",
+            "dulu kita adalah simfoni terindah, setiap nada cinta tercipta sempurna, kini yang tersisa hanyalah melodi pilu, bait-bait luka tanpa irama yang tak pernah usai.",
+            "bagai senja yang perlahan memudar di ufuk barat, begitu pula semua harapanku padamu, perlahan menghilang tanpa sisa, hanya menyisakan kegelapan.",
+            "di balik senyum yang terpahat sempurna di wajah ini, tersimpan ribuan kisah pilu dan luka yang tak terucap, rahasia hati yang hanya dapat dibagi pada sunyi malam dan bintang-bintang."
+        ];
+
+        // pengaturan untuk 'tetesan' hujan
+        let raindrops = [];
+        const numRaindrops = 200;
+
+        // kelas untuk setiap 'tetesan' hujan
+        class Raindrop {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.speed = 5 + Math.random() * 8;
+                this.length = 15 + Math.random() * 25;
+                this.opacity = 0.4 + Math.random() * 0.6;
+            }
+
+            // memperbarui posisi tetesan
+            update() {
+                this.y += this.speed;
+                // reset ke atas jika keluar layar atau sebagian kecil di bawah layar
+                if (this.y > canvas.height + this.length) {
+                    this.y = -this.length;
+                    this.x = Math.random() * canvas.width;
+                }
+            }
+
+            // menggambar tetesan di canvas
+            draw() {
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x, this.y + this.length);
+                ctx.strokeStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+        }
+
+        // inisialisasi tetesan hujan
+        function initRaindrops() {
+            for (let i = 0; i < numRaindrops; i++) {
+                raindrops.push(new Raindrop());
+            }
+        }
+
+        // loop animasi utama
+        function animateRain() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            raindrops.forEach(drop => {
+                drop.update();
+                drop.draw();
+            });
+
+            requestAnimationFrame(animateRain);
+        }
+
+        // Fungsi untuk menampilkan pesan notifikasi
+        function showNotification(message) {
+            notificationMessage.textContent = message;
+            notificationMessage.classList.add('show');
+            setTimeout(() => {
+                notificationMessage.classList.remove('show');
+            }, 3000); // Pesan akan hilang setelah 3 detik
+        }
+
+        // Fungsi untuk mengganti kutipan secara visual (baik otomatis maupun manual)
+        function changeQuoteVisual() {
+            currentQuoteElement.style.opacity = 0;
+            currentQuoteElement.style.transform = 'scale(0.9)';
+            setTimeout(() => {
+                currentQuoteIndex = (currentQuoteIndex + 1) % sadWords.length;
+                currentQuoteElement.textContent = sadWords[currentQuoteIndex];
+                currentQuoteElement.style.opacity = 1;
+                currentQuoteElement.style.transform = 'scale(1)';
+            }, 1000); // 1 detik untuk animasi fade
+        }
+
+        // Fungsi untuk memulai/mengatur ulang interval pergantian otomatis
+        function startAutoQuoteChange() {
+            clearInterval(quoteIntervalId); // Hentikan interval sebelumnya jika ada
+            quoteIntervalId = setInterval(changeQuoteVisual, AUTO_CHANGE_DURATION);
+        }
+
+        // fungsi untuk menyembunyikan splash screen dan menampilkan konten utama
+        function showMainContent() {
+            if (!isVideoEnded) {
+                isVideoEnded = true;
+                splashScreen.style.opacity = 0;
+                splashScreen.style.visibility = 'hidden';
+                mainContent.classList.remove('hidden');
+
+                backgroundMusic.play().catch(error => {
+                    console.log("Autoplay musik diblokir. Klik tombol mute/unmute untuk memutar musik.", error);
+                    musicToggleButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-volume-x"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>';
+                    isMusicPlaying = false;
+                });
+                isMusicPlaying = true;
+
+                startAutoQuoteChange();
+            }
+        }
+
+        // Fungsi untuk membagikan kutipan sebagai gambar (dengan Web Share API atau download fallback)
+        async function shareQuoteAsImage() {
+            const quoteToCapture = currentQuoteElement.cloneNode(true);
+            quoteToCapture.style.position = 'absolute';
+            quoteToCapture.style.left = '-9999px';
+            quoteToCapture.style.top = '-9999px';
+            quoteToCapture.style.width = 'auto';
+            quoteToCapture.style.height = 'auto';
+            quoteToCapture.style.margin = '0';
+            quoteToCapture.style.padding = '40px';
+            quoteToCapture.style.backgroundColor = 'rgba(10, 0, 20, 0.9)';
+            quoteToCapture.style.color = '#f0f4f8';
+            quoteToCapture.style.borderRadius = '1.5rem';
+            quoteToCapture.style.boxShadow = 'none';
+            quoteToCapture.style.textShadow = 'none';
+            quoteToCapture.style.animation = 'none';
+
+            document.body.appendChild(quoteToCapture);
+
+            try {
+                const canvas = await html2canvas(quoteToCapture, {
+                    backgroundColor: null,
+                    useCORS: true,
+                    scale: 2
+                });
+
+                const imageBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                const fileName = `kutipan-sad-${new Date().getTime()}.png`;
+                const imageFile = new File([imageBlob], fileName, { type: 'image/png' });
+
+                // Coba Web Share API terlebih dahulu
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [imageFile] })) {
+                    try {
+                        await navigator.share({
+                            files: [imageFile],
+                            title: 'kutipan sad',
+                            text: currentQuoteElement.textContent + '\n\nBagikan kutipan ini!' // Tambahkan teks opsional
+                        });
+                        showNotification('berhasil dibagikan!');
+                    } catch (error) {
+                        // User membatalkan sharing atau ada error lain
+                        if (error.name !== 'AbortError') { // AbortError berarti user membatalkan
+                            console.error('gagal berbagi via web share api:', error);
+                            showNotification('gagal berbagi. mencoba mengunduh.');
+                            // Fallback ke unduh jika Web Share API gagal karena alasan lain selain pembatalan
+                            downloadImage(imageFile, fileName);
+                        } else {
+                            showNotification('berbagi dibatalkan.');
+                        }
+                    }
+                } else {
+                    // Fallback ke unduh jika Web Share API tidak didukung
+                    showNotification('web share api tidak didukung. gambar akan diunduh.');
+                    downloadImage(imageFile, fileName);
+                }
+            } catch (error) {
+                console.error("Gagal membuat gambar kutipan:", error);
+                showNotification('gagal membuat gambar kutipan.');
+            } finally {
+                if (quoteToCapture.parentNode) {
+                    document.body.removeChild(quoteToCapture);
+                }
+            }
+        }
+
+        // Fungsi pembantu untuk mengunduh gambar
+        function downloadImage(file, fileName) {
+            const link = document.createElement('a');
+            link.download = fileName;
+            link.href = URL.createObjectURL(file);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href); // Bersihkan URL objek
+            showNotification('gambar kutipan telah diunduh!');
+        }
+
+        // event listener untuk video berakhir
+        splashVideo.addEventListener('ended', showMainContent);
+
+        // event listener untuk tombol 'lewati intro'
+        skipButton.addEventListener('click', () => {
+            splashVideo.pause();
+            showMainContent();
+        });
+
+        // event listener untuk tombol mute/unmute
+        musicToggleButton.addEventListener('click', () => {
+            if (isMusicPlaying) {
+                backgroundMusic.pause();
+                musicToggleButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-volume-x"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>';
+            } else {
+                backgroundMusic.play();
+                musicToggleButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-volume-2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M22.39 1.61a14 14 0 0 1 0 20.78"/></svg>';
+            }
+            isMusicPlaying = !isMusicPlaying;
+        });
+
+        // event listener untuk tombol 'kutipan berikutnya'
+        nextQuoteButton.addEventListener('click', () => {
+            changeQuoteVisual();
+            startAutoQuoteChange();
+        });
+
+        // event listener untuk tombol 'bagikan kutipan'
+        shareQuoteButton.addEventListener('click', shareQuoteAsImage);
+
+
+        // inisialisasi animasi hujan saat window dimuat
+        window.onload = function() {
+            initRaindrops();
+            animateRain();
+            musicToggleButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-volume-x"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>';
+            isMusicPlaying = false;
+        };
+    </script>
+</body>
+</html>
+
